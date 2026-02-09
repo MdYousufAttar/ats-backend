@@ -52,7 +52,16 @@ ${process.env.API_KEY}`,
 
     const text = data.candidates[0].content.parts[0].text;
 
-    return JSON.parse(text);
+    // Extract JSON safely from model output
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      console.error("Invalid JSON response from model:", text);
+      throw new Error("Model did not return valid JSON.");
+    }
+
+    return JSON.parse(jsonMatch[0]);
+
   } catch (error) {
     console.error("FINAL GEMINI ERROR:", error);
     throw error;
