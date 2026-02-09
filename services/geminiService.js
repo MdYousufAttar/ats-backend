@@ -1,34 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
-
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    atsScore: { type: Type.NUMBER },
-    summary: { type: Type.STRING },
-    keywordAnalysis: {
-      type: Type.OBJECT,
-      properties: {
-        matchedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-        missingKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-      },
-    },
-    sectionFeedback: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          section: { type: Type.STRING },
-          status: { type: Type.STRING, enum: ['Good', 'Needs Improvement', 'Poor'] },
-          feedback: { type: Type.STRING },
-        },
-      },
-    },
-    overallRecommendations: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-    },
-  },
-};
+import { GoogleGenAI } from "@google/genai";
 
 export const performAnalysis = async (resumeFile, jobDescription) => {
   if (!process.env.API_KEY) {
@@ -39,37 +9,41 @@ export const performAnalysis = async (resumeFile, jobDescription) => {
     apiKey: process.env.API_KEY,
   });
 
-  const model = 'gemini-2.5-flash';
+  const model = "gemini-1.5-flash"; // ✅ supported
 
-  const resumePart = {
-    inlineData: {
-      mimeType: resumeFile.mimeType,
-      data: resumeFile.data,
-    },
-  };
+  // Convert resume to text (IMPORTANT)
+  const resumeText = Buffer.from(resumeFile.data, "base64").toString("utf-8");
 
-  const textPart = {
-    text: `
-      Analyze the attached resume against the following job description.
-      Job Description: "${jobDescription || 'No job description provided.'}"
-      Provide detailed ATS analysis in JSON format.
-    `,
-  };
+  const prompt = `
+You are an ATS resume analyzer.
+
+Resume:
+${resumeText}
+
+Job Description:
+${jobDescription || "Not provided"}
+
+Return STRICT JSON with:
+{
+  "atsScore": number,
+  "summary": string,
+  "matchedKeywords": string[],
+  "missingKeywords": string[],
+  "recommendations": string[]
+}
+`;
 
   try {
     const response = await genAI.models.generateContent({
       model,
-      contents: { parts: [resumePart, textPart] },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema,
-      },
+      contents: [{ text: prompt }],
     });
 
-    return JSON.parse(response.text.trim());
+    const text = response.text;
+
+    return JSON.parse(text);
   } catch (error) {
-  console.error("FULL GEMINI ERROR:", error);
-  console.error("Error response data:", error?.response?.data);
-  throw error;  // <-- temporarily throw original error
-}
+    console.error("GEMINI CLOUD ERROR:", error);
+    throw error;
+  }
 };
