@@ -68,7 +68,8 @@ export const performAnalysis = async (resumeFile, jobDescription) => {
 
     return JSON.parse(response.text.trim());
   } catch (error) {
-    console.error('Gemini analysis error:', error);
-    throw new Error('Failed to get analysis from the AI model.');
-  }
+  console.error("FULL GEMINI ERROR:", error);
+  console.error("Error response data:", error?.response?.data);
+  throw error;  // <-- temporarily throw original error
+}
 };
