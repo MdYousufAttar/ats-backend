@@ -43,12 +43,23 @@ ${process.env.API_KEY}`,
       }
     );
 
-    const data = await response.json();
+    const raw = await response.text();
+
+    console.log("RAW GEMINI RESPONSE:", raw);
 
     if (!response.ok) {
-      console.error("Gemini API Error:", data);
+      console.error("Gemini API Error:", raw);
       throw new Error("Gemini API failed");
     }
+
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      console.error("Failed to parse Gemini response:", raw);
+      throw new Error("Invalid JSON from Gemini");
+    }
+
 
     const text = data.candidates[0].content.parts[0].text;
 
